@@ -1,6 +1,11 @@
-from flask import Flask, render_template, abort
+from flask import Flask, render_template, abort, request
 from datetime import datetime
 import requests
+import smtplib
+import os
+
+MY_EMAIL = os.environ.get("MY_EMAIL")
+MY_PASSWORD = os.environ.get("MY_PASSWORD")
 
 
 app = Flask(__name__)
@@ -22,9 +27,34 @@ def about():
     return render_template("about.html", current_year=current_year)
 
 
-@app.route("/contact")
+@app.route("/contact", methods=['GET', 'POST'])
 def contact():
-    return render_template("contact.html", current_year=current_year)
+    if request.method == 'POST':
+        name = request.form["name"].capitalize()
+        email = request.form["email"]
+        phone = request.form["phone"]
+        message = request.form["message"]
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=60) as connection:
+                connection.starttls()
+                connection.login(user=MY_EMAIL, password=MY_PASSWORD)
+                connection.sendmail(
+                    from_addr=MY_EMAIL,
+                    to_addrs="omarmobarak53@gmail.com",
+                    msg=f"Subject: New message from a 'Omar's Blog' user\n\n"
+                        f"Name: {name}\n"
+                        f"Email: {email}\n"
+                        f"Phone Number: {phone}\n"
+                        f"Message: {message}\n"
+                )
+        except smtplib.SMTPException:
+            h1 = "Sorry, there was an error sending your message, please try again later."
+        else:
+            h1 = "Successfully sent your message!"
+
+    else:
+        h1 = "Contact Me"
+    return render_template("contact.html", current_year=current_year, h1=h1)
 
 
 @app.route("/post/<int:post_id>")
